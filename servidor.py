@@ -29,7 +29,6 @@ def getCopaCode():
     receivedCode = request.args.get("code")
 
     print("LOG: HORA INICIO CONSULTA", time.asctime(time.localtime(time.time())))
-    #conn.search(search_base="dc=ehu,dc=es",search_filter="(uid=" + receivedUid + ")",attributes=["uid","eduPersonAffiliation","schacPersonalUniqueID","irisMailMainAddress","givenName","SchacSn1","SchacSn2"])
     conn = Connection(server, user="uid=admin,"+ldapBase, password=password, read_only=True, auto_bind=True)
     conn.search(search_base="ou=areas,"+ldapBase, search_filter="(copaAreaCode=" + receivedCode + ")", attributes=["copaName"],time_limit=tiempoTimeoutLDAPBusquedas)
 
