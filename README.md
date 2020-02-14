@@ -2,7 +2,7 @@
 
 This Rest service is for getting JSON objects from ldap searches. This way is easier contact to ldap from languages like javascript (node, angular, ionic,...)
 
-This rest service is based on flask software to serve a Rest service on your server that connects to an ldap server and returns a JSON object
+This rest service uses flask to serve a Rest service on your server that connects to an ldap server and returns a JSON object
 
 NOT STILL FOR PRODUCTION, WORKING COPY !
 
