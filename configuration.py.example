@@ -1,0 +1,8 @@
+server = 'ldapserver.domain.org:636'
+base = 'dc=domain,dc=org'
+#base = 'dc=ehu,dc=es'
+user = 'admin'
+userUID = 'uid=' + user + ',' + base
+password = '¡¡secretpassword!!'
+# Timeout in seconds
+ldapSearchesTimeout = 5
