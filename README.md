@@ -12,7 +12,10 @@ You need:
 
 - flask
 - python3
+
 sudo apt install flask python3
+
 - install some python3 libs:
+
 sudo pip3 install simplejson ldap3 pprint Pillow
 
