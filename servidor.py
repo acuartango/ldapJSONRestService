@@ -9,19 +9,19 @@ from ldap3 import get_config_parameter,set_config_parameter
 from io import BytesIO
 from PIL import Image
 from pprint import pprint
+import configuration
 
 # creating the Flask application
 app = Flask(__name__)
 cors = CORS(app)
 
-# You can use admin password or other
-password = '**adminPASSWORD**'
-ldapBase = 'dc=mydomain,dc=com'
-serverName = 'myldapserver.mydomain.com:636'
-server = Server(serverName, get_info=ALL, use_ssl=True)
+# There were encoding problems with python2, but not with python3.
+#print("Server Encoding: " + get_config_parameter('DEFAULT_CLIENT_ENCODING'))
+#print("System Encoding: " + sys.getdefaultencoding())
 
-tiempoTimeoutLDAPBusquedas=5
+server = Server(configuration.server, get_info=ALL, use_ssl=True)
 
+##############
 
 @app.route("/copaCode", methods=["GET", "POST"])
 def getCopaCode():
@@ -29,10 +29,20 @@ def getCopaCode():
     receivedCode = request.args.get("code")
 
     print("LOG: HORA INICIO CONSULTA", time.asctime(time.localtime(time.time())))
-    conn = Connection(server, user="uid=admin,"+ldapBase, password=password, read_only=True, auto_bind=True)
-    conn.search(search_base="ou=areas,"+ldapBase, search_filter="(copaAreaCode=" + receivedCode + ")", attributes=["copaName"],time_limit=tiempoTimeoutLDAPBusquedas)
+    
+    conn = Connection(
+        server, 
+        user=configuration.userUID, 
+        password=configuration.password, 
+        read_only=True,
+        auto_bind=True)
 
-    ldapResponsesJSON = ""
+    conn.search(
+        search_base='ou=areas,' + configuration.base,
+        search_filter='(copaAreaCode=' + receivedCode + ')',
+        attributes=['copaName'],
+        time_limit=configuration.ldapSearchesTimeout)
+   
     result_list_json = conn.response_to_json()
     result_list_object = json.loads(result_list_json)
     entries = result_list_object["entries"][0].get("attributes") 
@@ -41,7 +51,6 @@ def getCopaCode():
 
     return str(entries).replace('\'','\"');
 
-
 @app.route("/userInfo", methods=["GET", "POST"])
 def getUserInfo():
     filtro = request.args.get("user")
@@ -49,18 +58,22 @@ def getUserInfo():
     print("LOG: HORA INICIO CONSULTA", time.asctime(time.localtime(time.time())))
     start = datetime.datetime.now()
 
-    conn = Connection(server, user="uid=admin,"+ldapBase, password=password, read_only=True, auto_bind=True)
+    conn = Connection(
+        server, 
+        user=configuration.userUID, 
+        password=configuration.password, 
+        read_only=True,
+        auto_bind=True)
 
 #    searchFilter="(|(|(|(|(uid=*" + filtro + "*)(cn=*" + filtro + "*))(telephoneNumber=*" + filtro + "*))(mobile=*" + filtro + "*))(irisMailMainAddress=*" + filtro + "*))"
     searchFilter="(uid=" + filtro + ")"
 #    conn.search(search_base=ldapBase, search_filter="(uid=*" + filtro + "*)", attributes=["cn","uid","title"], time_limit=tiempoTimeoutLDAPBusquedas)
     conn.search(
-        search_base='ou=people,' + ldapBase, 
+        search_base='ou=people,' + configuration.base, 
         search_filter=searchFilter, 
         attributes=atributos, 
-        time_limit=tiempoTimeoutLDAPBusquedas)
+        time_limit=configuration.ldapSearchesTimeout)
     
-    print ("Filtro: " + searchFilter)
     searchDurationSeconds = (datetime.datetime.now() - start).seconds
 
     result_list_json = conn.response_to_json()
@@ -78,14 +91,13 @@ def getUserInfo():
                 ldapResponsesJSON[i][key][0] = str(ftfy.fix_text(str(ldapResponsesJSON[i][key][0]))).title()
                 print("Si está " + key + " en " + str(atributos))
 
-    if (searchDurationSeconds >= tiempoTimeoutLDAPBusquedas):
+    if (searchDurationSeconds >= configuration.ldapSearchesTimeout):
         print("Se ha alcanzado el timeout, los resultados pueden ser parciales : " + str(searchDurationSeconds) + ">=" + str(tiempoTimeoutLDAPBusquedas))
     
     print("LOG: HORA FIN CONSULTA", time.asctime(time.localtime(time.time())))
     
 #    return (str(ldapResponsesJSON).replace('\'','\"')), 200
     return json.dumps(ldapResponsesJSON), 200
-
 
 
 @app.route("/buscaPersonas", methods=["GET", "POST"])
@@ -95,12 +107,17 @@ def getPersonas():
     print("LOG: HORA INICIO CONSULTA", time.asctime(time.localtime(time.time())))
     start = datetime.datetime.now()
 
-    conn = Connection(server, user="uid=admin,"+ldapBase, password=password, read_only=True, auto_bind=True)
+    conn = Connection(
+        server, 
+        user=configuration.userUID, 
+        password=configuration.password, 
+        read_only=True,
+        auto_bind=True)
 
 #    searchFilter="(|(|(|(|(uid=*" + filtro + "*)(cn=*" + filtro + "*))(telephoneNumber=*" + filtro + "*))(mobile=*" + filtro + "*))(irisMailMainAddress=*" + filtro + "*))"
     searchFilter="(|(|(|(uid=*" + filtro + "*)(cn=*" + filtro + "*))(telephoneNumber=*" + filtro + "*))(irisMailMainAddress=*" + filtro + "*))"
 #    conn.search(search_base=ldapBase, search_filter="(uid=*" + filtro + "*)", attributes=["cn","uid","title"], time_limit=tiempoTimeoutLDAPBusquedas)
-    conn.search(search_base='ou=people,' + ldapBase, search_filter=searchFilter, attributes=atributos, time_limit=tiempoTimeoutLDAPBusquedas)
+    conn.search(search_base='ou=people,' + configuration.base, search_filter=searchFilter, attributes=atributos, time_limit=tiempoTimeoutLDAPBusquedas)
     
     print ("Filtro: " + searchFilter)
     searchDurationSeconds = (datetime.datetime.now() - start).seconds
@@ -119,7 +136,7 @@ def getPersonas():
                 ldapResponsesJSON[i][key][0] = str(ftfy.fix_text(str(ldapResponsesJSON[i][key][0]))).title()
 
 
-    if (searchDurationSeconds >= tiempoTimeoutLDAPBusquedas):
+    if (searchDurationSeconds >= configuration.ldapSearchesTimeout):
         print("Se ha alcanzado el timeout, los resultados pueden ser parciales : " + str(searchDurationSeconds) + ">=" + str(tiempoTimeoutLDAPBusquedas))
     
     print("LOG: HORA FIN CONSULTA", time.asctime(time.localtime(time.time())))
@@ -139,11 +156,17 @@ def getModifyPass():
     receivedUid = request.args.get("user")
     oldPass = request.args.get("oldpass")
     newPass = request.args.get("newpass")
+
     try:
-        conn = Connection(server, user='uid='+receivedUid+',ou=people,' +
-                          ldapBase, password=oldPass, read_only=True, auto_bind=True)
+        conn = Connection(
+            server, 
+            user='uid='+receivedUid+',ou=people,' + configuration.base,
+            password=oldPass, 
+            read_only=True,
+            auto_bind=True)
+
         newPassChangedOk = conn.extend.standard.modify_password(
-            'uid='+receivedUid+',ou=people,'+ldapBase, oldPass, newPass)
+            'uid='+receivedUid+',ou=people,' + configuration.base, oldPass, newPass)
     except:
         newPassChangedOk = False
 
