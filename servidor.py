@@ -92,7 +92,7 @@ def getUserInfo():
                 print("Si está " + key + " en " + str(atributos))
 
     if (searchDurationSeconds >= configuration.ldapSearchesTimeout):
-        print("Se ha alcanzado el timeout, los resultados pueden ser parciales : " + str(searchDurationSeconds) + ">=" + str(tiempoTimeoutLDAPBusquedas))
+        print("Se ha alcanzado el timeout, los resultados pueden ser parciales : " + str(searchDurationSeconds) + ">=" + str(configuration.ldapSearchesTimeout))
     
     print("LOG: HORA FIN CONSULTA", time.asctime(time.localtime(time.time())))
     
@@ -117,7 +117,7 @@ def getPersonas():
 #    searchFilter="(|(|(|(|(uid=*" + filtro + "*)(cn=*" + filtro + "*))(telephoneNumber=*" + filtro + "*))(mobile=*" + filtro + "*))(irisMailMainAddress=*" + filtro + "*))"
     searchFilter="(|(|(|(uid=*" + filtro + "*)(cn=*" + filtro + "*))(telephoneNumber=*" + filtro + "*))(irisMailMainAddress=*" + filtro + "*))"
 #    conn.search(search_base=ldapBase, search_filter="(uid=*" + filtro + "*)", attributes=["cn","uid","title"], time_limit=tiempoTimeoutLDAPBusquedas)
-    conn.search(search_base='ou=people,' + configuration.base, search_filter=searchFilter, attributes=atributos, time_limit=tiempoTimeoutLDAPBusquedas)
+    conn.search(search_base='ou=people,' + configuration.base, search_filter=searchFilter, attributes=atributos, time_limit=configuration.ldapSearchesTimeout)
     
     print ("Filtro: " + searchFilter)
     searchDurationSeconds = (datetime.datetime.now() - start).seconds
@@ -137,7 +137,7 @@ def getPersonas():
 
 
     if (searchDurationSeconds >= configuration.ldapSearchesTimeout):
-        print("Se ha alcanzado el timeout, los resultados pueden ser parciales : " + str(searchDurationSeconds) + ">=" + str(tiempoTimeoutLDAPBusquedas))
+        print("Se ha alcanzado el timeout, los resultados pueden ser parciales : " + str(searchDurationSeconds) + ">=" + str(configuration.ldapSearchesTimeout))
     
     print("LOG: HORA FIN CONSULTA", time.asctime(time.localtime(time.time())))
     
