@@ -21,14 +21,17 @@ cors = CORS(app)
 
 server = Server(configuration.server, get_info=ALL, use_ssl=True)
 
-##############
+#########################################################
+# Every @app.route is a enpoint of our REST service     #
+#########################################################
 
 @app.route("/copaCode", methods=["GET", "POST"])
 def getCopaCode():
-    # dado un copacode, devuleve su descripción buscando en el ldap en la rama "areas"
+    # We send a copacode and the description is returned. 
+    # This function is very close to our ldap configuration !
     receivedCode = request.args.get("code")
 
-    print("LOG: HORA INICIO CONSULTA", time.asctime(time.localtime(time.time())))
+    print("LOG: Ldap Search starting time is ", time.asctime(time.localtime(time.time())))
     
     conn = Connection(
         server, 
@@ -47,15 +50,22 @@ def getCopaCode():
     result_list_object = json.loads(result_list_json)
     entries = result_list_object["entries"][0].get("attributes") 
 
-    print("LOG: HORA FIN CONSULTA", time.asctime(time.localtime(time.time())))
+    print("LOG: Ldap Search ending time is ", time.asctime(time.localtime(time.time())))
 
     return str(entries).replace('\'','\"');
 
 @app.route("/userInfo", methods=["GET", "POST"])
 def getUserInfo():
-    filtro = request.args.get("user")
+    # With an user UID the service returns all contained data in a JSON object
+    # Think that the data you get depends on global ldap user used to connect 
+    # an it's permissions to read data of the ldap tree. Not all users can get
+    # all attributes nor all users from an ldap
+    #
+    # We read here only users below "ou=people" tree !!
+    # This service needs complete username, parts of it won't returns any data !!
+    username = request.args.get("user")
     atributos=["*"]
-    print("LOG: HORA INICIO CONSULTA", time.asctime(time.localtime(time.time())))
+    print("LOG: Ldap Search starting time is ", time.asctime(time.localtime(time.time())))
     start = datetime.datetime.now()
 
     conn = Connection(
@@ -66,7 +76,7 @@ def getUserInfo():
         auto_bind=True)
 
 #    searchFilter="(|(|(|(|(uid=*" + filtro + "*)(cn=*" + filtro + "*))(telephoneNumber=*" + filtro + "*))(mobile=*" + filtro + "*))(irisMailMainAddress=*" + filtro + "*))"
-    searchFilter="(uid=" + filtro + ")"
+    searchFilter="(uid=" + username + ")"
 #    conn.search(search_base=ldapBase, search_filter="(uid=*" + filtro + "*)", attributes=["cn","uid","title"], time_limit=tiempoTimeoutLDAPBusquedas)
     conn.search(
         search_base='ou=people,' + configuration.base, 
@@ -82,8 +92,10 @@ def getUserInfo():
 
     ldapResponsesJSON = list(map(lambda x : x.get("attributes"), entries))
 
-    # Corregimos los strings codificados en UTF8 dentro de strings UTF8. Hay pocos en el ldap, pero los hay.
-    # Aprovechamos para capitalizar las primeras letras de los nombres con apellidos.
+    # There is a trick here. Some data in our gigant ldap has been coded to UTF8 twice, so we need to
+    # normalize the output using ftfy library. If your ldap haven't codification problems you can eliminate 
+    # "ftfy.fix_text", but if the codification is correct it won't do anything bad or incorrect...
+    # We also capitalize the first character of names to show them better
     atributos=['cn','schacSn','givenName']
     for i, item in enumerate(ldapResponsesJSON):
         for key, value in item.items():
@@ -92,19 +104,25 @@ def getUserInfo():
                 print("Si está " + key + " en " + str(atributos))
 
     if (searchDurationSeconds >= configuration.ldapSearchesTimeout):
-        print("Se ha alcanzado el timeout, los resultados pueden ser parciales : " + str(searchDurationSeconds) + ">=" + str(configuration.ldapSearchesTimeout))
+        print("The timeout has been reached, returned data can be partial : " + str(searchDurationSeconds) + ">=" + str(configuration.ldapSearchesTimeout))
+ 
+    print("LOG: Ldap Search ending time is ", time.asctime(time.localtime(time.time())))
     
-    print("LOG: HORA FIN CONSULTA", time.asctime(time.localtime(time.time())))
-    
-#    return (str(ldapResponsesJSON).replace('\'','\"')), 200
     return json.dumps(ldapResponsesJSON), 200
 
 
 @app.route("/buscaPersonas", methods=["GET", "POST"])
 def getPersonas():
+    # With an user UID or a part of it, the service returns all ldap contained data in a JSON object
+    # Think that the data you get depends on global ldap user used to connect 
+    # an it's permissions to read data of the ldap tree. Not all users can get
+    # all attributes nor all users from an ldap
+    #
+    # We read here only users below "ou=people" tree !!
+
     filtro = request.args.get("filtro")
     atributos=["cn","uid","title"]
-    print("LOG: HORA INICIO CONSULTA", time.asctime(time.localtime(time.time())))
+    print("LOG: Ldap Search starting time is ", time.asctime(time.localtime(time.time())))
     start = datetime.datetime.now()
 
     conn = Connection(
@@ -128,8 +146,10 @@ def getPersonas():
 
     ldapResponsesJSON = list(map(lambda x : x.get("attributes"), entries))
 
-    # Corregimos los strings codificados en UTF8 dentro de strings UTF8. Hay pocos en el ldap, pero los hay.
-    # Aprovechamos para capitalizar las primeras letras de los nombres con apellidos.
+    # There is a trick here. Some data in our gigant ldap has been coded to UTF8 twice, so we need to
+    # normalize the output using ftfy library. If your ldap haven't codification problems you can eliminate 
+    # "ftfy.fix_text", but if the codification is correct it won't do anything bad or incorrect...
+    # We also capitalize the first character of names to show them better
     for i, item in enumerate(ldapResponsesJSON):
         for key, value in item.items():
             if ('cn' in key):
@@ -137,22 +157,22 @@ def getPersonas():
 
 
     if (searchDurationSeconds >= configuration.ldapSearchesTimeout):
-        print("Se ha alcanzado el timeout, los resultados pueden ser parciales : " + str(searchDurationSeconds) + ">=" + str(configuration.ldapSearchesTimeout))
+        print("The timeout has been reached, returned data can be partial : " + str(searchDurationSeconds) + ">=" + str(configuration.ldapSearchesTimeout))
     
-    print("LOG: HORA FIN CONSULTA", time.asctime(time.localtime(time.time())))
-    
-#    return (str(ldapResponsesJSON).replace('\'','\"')), 200
+    print("LOG: Ldap Search ending time is ", time.asctime(time.localtime(time.time())))
+
     return json.dumps(ldapResponsesJSON), 200
 
 
 
 @app.route("/userModifyPass", methods=["GET", "POST"])
 def getModifyPass():
-    # Entrada: uid usuario + password + nuevoPassword
-    # Salida: True si ha cambiado el password y False si no.
-    # El bind se hace con el propio UID del usuario.
-    # Llamada de prueba (comprobar los passwords antes de la prueba):
-    # http://0.0.0.0:5000/userModifyPass?user=sczcubea&oldpass=XXXXXXXXXX&newpass=YYYYYYYY
+    # Input: user uid + password + newPassword
+    # Output: True if password has been correctly changed or False if not.
+    # The bind (connection with ldap) is maded with the users uid + password to confirms identity
+    # Test call (comprobar los passwords antes de la prueba):
+    # http://0.0.0.0:5000/userModifyPass?user=username&oldpass=XXXXXXXXXX&newpass=YYYYYYYY
+    # Note users must be under "ou=people" ldap tree
     receivedUid = request.args.get("user")
     oldPass = request.args.get("oldpass")
     newPass = request.args.get("newpass")
@@ -175,16 +195,15 @@ def getModifyPass():
 
 @app.route("/resizeImg", methods=["GET", "POST"])
 def get_resizeImg():
-    # Entrada: imagen convertida a base64
-    # Salida: Imagen convertida en este caso rotada, pero la idea era hacer un resize  parametros de entrada.
-    # La idea es que cuando se meta una foto en el ldap, sea siempre del mismo tamaño aprox.
+    # Input: base64 JPEG image
+    # Output: new base64 JPG Image resized. Still Work In Progress!
     img_b64 = bytes(request.args.get("img"), encoding="utf-8")
 
     f = Image.open(BytesIO(base64.b64decode(img_b64)))
     rotada = f.rotate(33, expand=1)
 
     #    imgfile.seek(0)
-    print("Imagen convertida en base64 de nuevo: ")
+    print("Converted new base64 image: ")
     buffered = BytesIO()
     if rotada.mode in ("RGBA", "P"):
         rotada = rotada.convert("RGB")
@@ -193,4 +212,4 @@ def get_resizeImg():
     print(base64.b64encode(buffered.getvalue()))
     print("-----------------")
 
-    return "", 200
+    return str(base64.b64encode(buffered.getvalue()),'utf-8'), 200
