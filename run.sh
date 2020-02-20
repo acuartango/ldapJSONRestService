@@ -1,5 +1,5 @@
 #!/bin/bash
-. venv/bin/activate
+#. venv/bin/activate
 export FLASK_APP=./servidor.py
 #source $(pipenv --venv)/bin/activate
 #export FLASK_ENV="development"
