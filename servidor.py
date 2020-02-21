@@ -196,20 +196,23 @@ def getModifyPass():
 @app.route("/resizeImg", methods=["GET", "POST"])
 def get_resizeImg():
     # Input: base64 JPEG image
-    # Output: new base64 JPG Image resized. Still Work In Progress!
+    # Output: new base64 JPG Image resized. We don't want large images to be loaded into ldap!
+    size = 128, 128
     img_b64 = bytes(request.args.get("img"), encoding="utf-8")
 
     f = Image.open(BytesIO(base64.b64decode(img_b64)))
-    rotada = f.rotate(33, expand=1)
+    reducedImage = f.resize(size,Image.LANCZOS)
 
-    #    imgfile.seek(0)
-    print("Converted new base64 image: ")
+    #print("Converted new base64 image: ")
     buffered = BytesIO()
-    if rotada.mode in ("RGBA", "P"):
-        rotada = rotada.convert("RGB")
-    rotada.save(buffered, format="JPEG")
-    print("-----------------")
-    print(base64.b64encode(buffered.getvalue()))
-    print("-----------------")
+
+    if reducedImage.mode in ("RGBA", "P"):
+        reducedImage = reducedImage.convert("RGB")
+    
+    reducedImage.save(buffered, format="JPEG")
+
+#    print("-----------------")
+#    print(base64.b64encode(buffered.getvalue()))
+#    print("-----------------")
 
     return str(base64.b64encode(buffered.getvalue()),'utf-8'), 200
